@@ -1,6 +1,6 @@
 # Drawio desktop
 
-A Rust and GPUI Kit window hosts the bundled draw.io web editor in WebView2. Use the editor's File menu to open and save local diagrams. The app serves its own assets and works without a local HTTP server.
+A Rust and GPUI Kit window hosts the bundled draw.io web editor using WebView2 on Windows, WKWebView on macOS, and WebKitGTK on Linux. Use the editor's File menu to open and save local diagrams. The app serves its own assets and works without a local HTTP server.
 
 ## Run
 
@@ -18,7 +18,7 @@ to save a copy. Test with a disposable diagram before editing an original.
 cargo test --locked --manifest-path rust-desktop/Cargo.toml
 ```
 
-The executable requires WebView2. For a build that includes the runtime, use
+The Windows executable requires WebView2. For a build that includes the runtime, use
 the instructions below.
 
 ## Bundle WebView2 for offline deployment
