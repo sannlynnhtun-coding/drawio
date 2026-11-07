@@ -37,7 +37,7 @@ impl HasWindowHandle for Parent {
 }
 
 pub fn parent(window: &Window) -> Result<Parent, wry::Error> {
-    let handle = window.window_handle()?;
+    let handle = HasWindowHandle::window_handle(window)?;
     match handle.as_raw() {
         RawWindowHandle::Xlib(handle) => Ok(Parent(handle)),
         RawWindowHandle::Xcb(handle) => {

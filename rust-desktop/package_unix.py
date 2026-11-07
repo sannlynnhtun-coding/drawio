@@ -81,7 +81,7 @@ def linux(stage, binary, output, version, arch, repo):
         shutil.copy2(source, dest)
     desktop = stage / "usr/share/applications/drawio.desktop"
     desktop.parent.mkdir(parents=True)
-    desktop.write_text("[Desktop Entry]\nType=Application\nName=Drawio\nComment=Offline diagram editor\nExec=Drawio %f\nIcon=drawio\nTerminal=false\nCategories=Graphics;\nMimeType=application/x-drawio;\n", encoding="utf-8")
+    desktop.write_text("[Desktop Entry]\nType=Application\nName=Drawio\nComment=Offline diagram editor\nExec=Drawio %f\nIcon=drawio\nStartupWMClass=drawio\nTerminal=false\nCategories=Graphics;\nMimeType=application/x-drawio;\n", encoding="utf-8")
     mime = stage / "usr/share/mime/packages/drawio.xml"
     mime.parent.mkdir(parents=True)
     mime.write_text('<?xml version="1.0"?><mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info"><mime-type type="application/x-drawio"><comment>Drawio Diagram</comment><glob pattern="*.drawio"/></mime-type></mime-info>', encoding="utf-8")

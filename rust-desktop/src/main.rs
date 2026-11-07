@@ -354,6 +354,8 @@ fn open_diagram_window(diagram: Option<LaunchDiagram>, cx: &mut App) {
     let restore_bounds = Bounds::centered(None, size(px(1200.), px(800.)), cx);
     gpui_kit::open_window(
         WindowOptions {
+            #[cfg(target_os = "linux")]
+            app_id: Some("drawio".into()),
             window_bounds: Some(if diagram.is_some() {
                 WindowBounds::Maximized(restore_bounds)
             } else {
