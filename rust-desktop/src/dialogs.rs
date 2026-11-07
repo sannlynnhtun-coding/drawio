@@ -51,11 +51,11 @@ pub fn save_file(name: &str) -> Option<PathBuf> {
             Some("Save As"),
             None::<&gtk::Window>,
             gtk::FileChooserAction::Save,
-            &[
-                ("Cancel", gtk::ResponseType::Cancel),
-                ("Save", gtk::ResponseType::Accept),
-            ],
         );
+        dialog.add_buttons(&[
+            ("Cancel", gtk::ResponseType::Cancel),
+            ("Save", gtk::ResponseType::Accept),
+        ]);
         dialog.set_current_name(name);
         dialog.set_do_overwrite_confirmation(true);
         dialog.set_keep_above(true);
