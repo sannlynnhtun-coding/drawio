@@ -104,6 +104,10 @@ impl Desktop {
             .with_https_scheme(true)
             .with_incognito(true)
             .with_initialization_script(include_str!("../assets/branding.js"))
+            .with_initialization_script(format!(
+                "addEventListener('DOMContentLoaded',()=>{{const s=document.createElement('style');s.id='drawio-light-theme';s.textContent={};document.head.append(s);}},{{once:true}});",
+                serde_json::to_string(include_str!("../assets/theme.css")).unwrap()
+            ))
             .with_additional_browser_args("--disable-background-networking --proxy-server=127.0.0.1:9 --proxy-bypass-list=drawio.localhost")
             .with_custom_protocol("drawio".into(), |_, request| response(request.uri()))
             .with_navigation_handler(|url| url.starts_with(ORIGIN))

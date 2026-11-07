@@ -1,0 +1,59 @@
+/* Homepage-inspired light dashboard chrome; diagram content keeps its own styles. */
+.geMenubar, .geToolbar, .geSidebarContainer, .geFormatContainer,
+.geFooterContainer, .geDialog, .mxPopupMenu {
+    font-family: "Segoe UI", sans-serif !important;
+    color: #202124 !important;
+    background-color: #ffffff !important;
+    border-color: #e4e7ec !important;
+}
+.geMenubar {
+    background-color: #f8f9fb !important;
+    border-bottom: 1px solid #e4e7ec !important;
+}
+.geToolbar { border-bottom: 1px solid #e4e7ec !important; }
+.geMenubar a, .geToolbar a { border-radius: 6px; }
+.geMenubar a:hover, .geToolbar a:hover { background-color: #eef0f4 !important; }
+.geSidebarContainer { border-right: 1px solid #e4e7ec !important; }
+.geFormatContainer { border-left: 1px solid #e4e7ec !important; }
+.geSidebarContainer .geTitle, .geFormatContainer .geTitle {
+    background: #f8f9fb !important;
+    color: #525866 !important;
+    border-color: #e4e7ec !important;
+    font-weight: 600 !important;
+}
+.geDialog {
+    border: 1px solid #e4e7ec !important;
+    border-radius: 12px !important;
+    box-shadow: 0 16px 48px #18223024 !important;
+}
+.geDialogTitle { color: #181d27 !important; font-weight: 600 !important; }
+.geBtn {
+    background: #ffffff !important;
+    color: #344054 !important;
+    border: 1px solid #d5d9e2 !important;
+    border-radius: 7px !important;
+    box-shadow: 0 1px 2px #1018280d !important;
+}
+.geBtn:hover { background: #f2f4f7 !important; }
+.gePrimaryBtn { background: #20242c !important; color: #ffffff !important; border-color: #20242c !important; }
+.gePrimaryBtn:hover { background: #363c49 !important; }
+.geBtn:disabled { opacity: .45; }
+.geDialog input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+.geDialog select, .geDialog textarea {
+    border: 1px solid #d5d9e2 !important;
+    border-radius: 6px !important;
+    background-color: #fff !important;
+    color: #202124 !important;
+}
+.geDialog input:focus-visible, .geDialog select:focus-visible,
+.geDialog textarea:focus-visible, .geBtn:focus-visible, .geMenubar a:focus-visible {
+    outline: 2px solid #4f75de !important;
+    outline-offset: 2px;
+}
+.mxPopupMenu {
+    border: 1px solid #e4e7ec !important;
+    border-radius: 9px !important;
+    box-shadow: 0 8px 24px #1822301f !important;
+}
+.mxPopupMenuItemHover { background-color: #eef0f4 !important; color: #181d27 !important; }
+.geFooterContainer { background-color: #f8f9fb !important; border-top: 1px solid #e4e7ec !important; }
