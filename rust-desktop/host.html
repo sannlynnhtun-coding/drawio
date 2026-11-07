@@ -1,0 +1,31 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Local diagram editor</title>
+<style>
+html,body,iframe {width:100%;height:100%;margin:0;border:0;display:block}
+</style>
+<iframe title="Diagram editor" sandbox="allow-scripts allow-same-origin allow-modals"></iframe>
+<script>
+const editor = document.querySelector('iframe');
+function sendToEditor(message) {
+    editor.contentWindow.postMessage(JSON.stringify(message), location.origin);
+}
+addEventListener('message', ({source, origin, data}) => {
+    if (source !== editor.contentWindow || origin !== location.origin || typeof data !== 'string') return;
+    try {
+        const message = JSON.parse(data);
+        switch (message.event) {
+            case 'init':
+            case 'load':
+            case 'export':
+            case 'autosave':
+            case 'save':
+                if (message.event === 'autosave') delete message.xml;
+                window.ipc.postMessage(JSON.stringify(message));
+        }
+    } catch (error) {
+        console.error(error);
+    }
+});
+editor.src = '/index.html?embed=1&proto=json&offline=1&noExitBtn=1&noSaveBtn=1&saveAndExit=0';
+</script>
