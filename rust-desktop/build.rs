@@ -1,12 +1,15 @@
 use std::{env, fs, path::PathBuf};
 
 fn main() {
+    println!("cargo:rerun-if-changed=../src/main/webapp");
+    if env::var("CARGO_CFG_TARGET_OS").as_deref() != Ok("windows") {
+        return;
+    }
     println!("cargo:rerun-if-changed=Drawio.rc");
     println!("cargo:rerun-if-changed=assets/Drawio.ico");
     embed_resource::compile("Drawio.rc", embed_resource::NONE)
         .manifest_optional()
         .expect("Cannot embed Drawio icon");
-    println!("cargo:rerun-if-changed=../src/main/webapp");
     println!("cargo:rerun-if-env-changed=DRAWIO_WEBVIEW2_CAB");
     let runtime = env::var_os("DRAWIO_WEBVIEW2_CAB")
         .map(|cab| {

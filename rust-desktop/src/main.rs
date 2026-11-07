@@ -1,8 +1,12 @@
-#![cfg_attr(not(test), windows_subsystem = "windows")]
+#![cfg_attr(all(target_os = "windows", not(test)), windows_subsystem = "windows")]
 
 use gpui_kit::*;
-use std::{borrow::Cow, path::PathBuf};
-use wry::{NewWindowResponse, WebView, WebViewBuilder, WebViewBuilderExtWindows};
+use std::borrow::Cow;
+#[cfg(target_os = "windows")]
+use std::path::PathBuf;
+#[cfg(target_os = "windows")]
+use wry::WebViewBuilderExtWindows;
+use wry::{NewWindowResponse, WebView, WebViewBuilder};
 
 mod diagram_file;
 
@@ -39,12 +43,22 @@ fn editor_url(diagram: Option<&LaunchDiagram>) -> String {
             )
             .to_string(),
         );
-        url.push_str("#Uhttps%3A%2F%2Fdrawio.localhost%2F__launch.drawio");
+        url.push_str("#U");
+        url.push_str(
+            &percent_encoding::utf8_percent_encode(
+                &format!("{ORIGIN}__launch.drawio"),
+                percent_encoding::NON_ALPHANUMERIC,
+            )
+            .to_string(),
+        );
     }
     url
 }
 
+#[cfg(target_os = "windows")]
 const ORIGIN: &str = "https://drawio.localhost/";
+#[cfg(not(target_os = "windows"))]
+const ORIGIN: &str = "drawio://localhost/";
 const CSP: &str = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'";
 
 #[derive(rust_embed::RustEmbed)]
@@ -79,77 +93,72 @@ fn response(uri: &wry::http::Uri) -> wry::http::Response<Cow<'static, [u8]>> {
     }
 }
 
-fn bounds(window: &Window) -> wry::Rect {
-    let size = window.viewport_size();
-    wry::Rect {
-        position: wry::dpi::LogicalPosition::new(0.0, 0.0).into(),
-        size: wry::dpi::LogicalSize::new(
-            f64::from(size.width).max(1.0),
-            f64::from(size.height).max(1.0),
-        )
-        .into(),
-    }
+struct Desktop {
+    _web: WebView,
 }
-
-struct Desktop(WebView);
 
 impl Desktop {
     fn new(window: &Window, diagram: Option<LaunchDiagram>) -> Result<Self, wry::Error> {
-        use windows::Win32::UI::WindowsAndMessaging::{
-            GWL_STYLE, GetWindowLongPtrW, ICON_BIG, ICON_SMALL, LoadIconW, SWP_FRAMECHANGED,
-            SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SendMessageW, SetWindowLongPtrW, SetWindowPos,
-            WM_SETICON, WS_CLIPCHILDREN,
-        };
-        use wry::raw_window_handle::{HasWindowHandle, RawWindowHandle};
-        if let RawWindowHandle::Win32(handle) = HasWindowHandle::window_handle(window)
-            .expect("Missing native window")
-            .as_raw()
+        #[cfg(target_os = "windows")]
         {
-            let hwnd = windows::Win32::Foundation::HWND(handle.hwnd.get() as *mut _);
-            // Keep the parent renderer from painting over WebView2's child window.
-            unsafe {
-                let instance = windows::Win32::System::LibraryLoader::GetModuleHandleW(None)
-                    .expect("Cannot find Drawio module");
-                let icon = LoadIconW(
-                    Some(instance.into()),
-                    windows::core::PCWSTR(1usize as *const u16),
-                )
-                .expect("Cannot load Drawio icon");
-                SendMessageW(
-                    hwnd,
-                    WM_SETICON,
-                    Some(windows::Win32::Foundation::WPARAM(ICON_BIG as usize)),
-                    Some(windows::Win32::Foundation::LPARAM(icon.0 as isize)),
-                );
-                SendMessageW(
-                    hwnd,
-                    WM_SETICON,
-                    Some(windows::Win32::Foundation::WPARAM(ICON_SMALL as usize)),
-                    Some(windows::Win32::Foundation::LPARAM(icon.0 as isize)),
-                );
-                let style = GetWindowLongPtrW(hwnd, GWL_STYLE);
-                SetWindowLongPtrW(hwnd, GWL_STYLE, style | WS_CLIPCHILDREN.0 as isize);
-                let _ = SetWindowPos(
-                    hwnd,
-                    None,
-                    0,
-                    0,
-                    0,
-                    0,
-                    SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED,
-                );
+            use windows::Win32::UI::WindowsAndMessaging::{
+                GWL_STYLE, GetWindowLongPtrW, ICON_BIG, ICON_SMALL, LoadIconW, SWP_FRAMECHANGED,
+                SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SendMessageW, SetWindowLongPtrW,
+                SetWindowPos, WM_SETICON, WS_CLIPCHILDREN,
+            };
+            use wry::raw_window_handle::{HasWindowHandle, RawWindowHandle};
+            if let RawWindowHandle::Win32(handle) = HasWindowHandle::window_handle(window)
+                .expect("Missing native window")
+                .as_raw()
+            {
+                let hwnd = windows::Win32::Foundation::HWND(handle.hwnd.get() as *mut _);
+                // Keep the parent renderer from painting over WebView2's child window.
+                unsafe {
+                    let instance = windows::Win32::System::LibraryLoader::GetModuleHandleW(None)
+                        .expect("Cannot find Drawio module");
+                    let icon = LoadIconW(
+                        Some(instance.into()),
+                        windows::core::PCWSTR(1usize as *const u16),
+                    )
+                    .expect("Cannot load Drawio icon");
+                    SendMessageW(
+                        hwnd,
+                        WM_SETICON,
+                        Some(windows::Win32::Foundation::WPARAM(ICON_BIG as usize)),
+                        Some(windows::Win32::Foundation::LPARAM(icon.0 as isize)),
+                    );
+                    SendMessageW(
+                        hwnd,
+                        WM_SETICON,
+                        Some(windows::Win32::Foundation::WPARAM(ICON_SMALL as usize)),
+                        Some(windows::Win32::Foundation::LPARAM(icon.0 as isize)),
+                    );
+                    let style = GetWindowLongPtrW(hwnd, GWL_STYLE);
+                    SetWindowLongPtrW(hwnd, GWL_STYLE, style | WS_CLIPCHILDREN.0 as isize);
+                    let _ = SetWindowPos(
+                        hwnd,
+                        None,
+                        0,
+                        0,
+                        0,
+                        0,
+                        SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED,
+                    );
+                }
             }
         }
         let url = editor_url(diagram.as_ref());
-        let web = WebViewBuilder::new()
-            .with_https_scheme(true)
+        let builder = WebViewBuilder::new();
+        #[cfg(target_os = "windows")]
+        let builder = builder.with_https_scheme(true)
+            .with_additional_browser_args("--disable-background-networking --proxy-server=127.0.0.1:9 --proxy-bypass-list=drawio.localhost");
+        let builder = builder
             .with_incognito(true)
             .with_initialization_script(include_str!("../assets/branding.js"))
             .with_initialization_script(format!(
                 "addEventListener('DOMContentLoaded',()=>{{const s=document.createElement('style');s.id='drawio-light-theme';s.textContent={};document.head.append(s);}},{{once:true}});",
                 serde_json::to_string(include_str!("../assets/theme.css")).unwrap()
             ))
-            .with_additional_browser_args("--disable-background-networking --proxy-server=127.0.0.1:9 --proxy-bypass-list=drawio.localhost")
             .with_custom_protocol("drawio".into(), move |_, request| {
                 if request.uri().path() == "/__launch.drawio" {
                     if let Some(diagram) = &diagram {
@@ -166,7 +175,7 @@ impl Desktop {
             .with_navigation_handler(|url| url.starts_with(ORIGIN))
             .with_new_window_req_handler(|_, _| NewWindowResponse::Deny)
             .with_download_started_handler(|url, destination| {
-                if !url.starts_with("blob:https://drawio.localhost/") && !url.starts_with("data:") {
+                if !local_download(&url) {
                     return false;
                 }
                 let name = destination.file_name().unwrap_or_default().to_string_lossy();
@@ -177,21 +186,45 @@ impl Desktop {
                     false
                 }
             })
-            .with_bounds(bounds(window))
-            .with_url(url)
-            .build_as_child(window)?;
-        Ok(Self(web))
+            .with_url(url);
+        #[cfg(not(target_os = "linux"))]
+        let web = builder.build(window)?;
+        #[cfg(target_os = "linux")]
+        let web = builder.build(&linux::parent(window)?)?;
+        Ok(Self { _web: web })
     }
 }
 
 impl Render for Desktop {
-    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _window: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+        #[cfg(target_os = "linux")]
+        {
+            let size = _window.viewport_size();
+            let _ = self._web.set_bounds(wry::Rect {
+                position: wry::dpi::LogicalPosition::new(0, 0).into(),
+                size: wry::dpi::LogicalSize::new(f64::from(size.width), f64::from(size.height))
+                    .into(),
+            });
+        }
         div().size_full()
     }
 }
 
+fn local_download(url: &str) -> bool {
+    url.starts_with(&format!("blob:{ORIGIN}"))
+        || url.starts_with("data:")
+        || (cfg!(not(target_os = "windows")) && url.starts_with("blob:null/"))
+}
+
+#[cfg(target_os = "linux")]
+mod linux;
+#[cfg(target_os = "macos")]
+mod macos;
+
+#[cfg(target_os = "windows")]
 include!(concat!(env!("OUT_DIR"), "/webview2.rs"));
 
+#[cfg(target_os = "windows")]
 fn unpack_webview2(folder: &str, cab: &[u8]) -> Result<PathBuf, Box<dyn std::error::Error>> {
     use std::{fs, os::windows::process::CommandExt, process::Command};
 
@@ -267,81 +300,94 @@ fn main() {
             std::process::exit(1);
         }
     };
-    // Use the HWND renderer when hosting a native WebView2 child.
-    unsafe { std::env::set_var("GPUI_DISABLE_DIRECT_COMPOSITION", "1") };
-    let runtime = if let Some((folder, cab)) = BUNDLED_RUNTIME {
-        match unpack_webview2(folder, cab) {
-            Ok(runtime) => Some(runtime),
-            Err(error) => {
-                rfd::MessageDialog::new()
-                    .set_title("Cannot prepare bundled WebView2")
-                    .set_description(error.to_string())
-                    .show();
-                std::process::exit(1);
+    #[cfg(target_os = "windows")]
+    {
+        // Use the HWND renderer when hosting a native WebView2 child.
+        unsafe { std::env::set_var("GPUI_DISABLE_DIRECT_COMPOSITION", "1") };
+        let runtime = if let Some((folder, cab)) = BUNDLED_RUNTIME {
+            match unpack_webview2(folder, cab) {
+                Ok(runtime) => Some(runtime),
+                Err(error) => {
+                    rfd::MessageDialog::new()
+                        .set_title("Cannot prepare bundled WebView2")
+                        .set_description(error.to_string())
+                        .show();
+                    std::process::exit(1);
+                }
             }
+        } else {
+            std::env::current_exe()
+                .ok()
+                .map(|exe| exe.with_file_name("WebView2Runtime"))
+                .filter(|dir| dir.join("msedgewebview2.exe").is_file())
+        };
+        if let Some(runtime) = runtime {
+            // Configure WebView2 before starting GPUI or any worker threads.
+            unsafe { std::env::set_var("WEBVIEW2_BROWSER_EXECUTABLE_FOLDER", runtime) };
         }
-    } else {
-        std::env::current_exe()
-            .ok()
-            .map(|exe| exe.with_file_name("WebView2Runtime"))
-            .filter(|dir| dir.join("msedgewebview2.exe").is_file())
-    };
-    if let Some(runtime) = runtime {
-        // Configure WebView2 before starting GPUI or any worker threads.
-        unsafe { std::env::set_var("WEBVIEW2_BROWSER_EXECUTABLE_FOLDER", runtime) };
     }
-
-    gpui_kit::application().run(move |cx| {
+    #[cfg(target_os = "linux")]
+    let application = linux::application();
+    #[cfg(not(target_os = "linux"))]
+    let application = gpui_kit::application();
+    #[cfg(target_os = "macos")]
+    let pending = macos::register(&application);
+    application.run(move |cx| {
         gpui_kit::init(cx);
+        #[cfg(target_os = "linux")]
+        linux::pump_events(cx);
         cx.on_window_closed(|cx, _| {
             if cx.windows().is_empty() {
                 cx.quit();
             }
         })
         .detach();
-        gpui_kit::open_window(
-            WindowOptions {
-                window_bounds: Some(WindowBounds::Windowed(Bounds::centered(
-                    None,
-                    size(px(1200.), px(800.)),
-                    cx,
-                ))),
-                titlebar: Some(TitlebarOptions {
-                    title: Some("Drawio".into()),
-                    ..Default::default()
-                }),
-                ..Default::default()
-            },
-            cx,
-            move |window, cx| {
-                let desktop = Desktop::new(window, diagram).unwrap_or_else(|error| {
-                    rfd::MessageDialog::new()
-                        .set_title("Cannot start local editor")
-                        .set_description(error.to_string())
-                        .show();
-                    std::process::exit(1);
-                });
-                window.on_window_should_close(cx, |window, _| {
-                    rfd::MessageDialog::new()
-                        .set_parent(window)
-                        .set_title("Close Drawio?")
-                        .set_description("Save any changes using the File menu before closing.")
-                        .set_buttons(rfd::MessageButtons::OkCancel)
-                        .show()
-                        == rfd::MessageDialogResult::Ok
-                });
-                cx.new(|cx: &mut Context<Desktop>| {
-                    cx.observe_window_bounds(window, |this, window, _| {
-                        let _ = this.0.set_bounds(bounds(window));
-                    })
-                    .detach();
-                    desktop
-                })
-            },
-        )
-        .expect("Cannot open GPUI window");
-        cx.activate(true);
+        #[cfg(target_os = "macos")]
+        if macos::ready(pending, cx) && diagram.is_none() {
+            return;
+        }
+        open_diagram_window(diagram, cx);
     });
+}
+
+fn open_diagram_window(diagram: Option<LaunchDiagram>, cx: &mut App) {
+    let restore_bounds = Bounds::centered(None, size(px(1200.), px(800.)), cx);
+    gpui_kit::open_window(
+        WindowOptions {
+            window_bounds: Some(if diagram.is_some() {
+                WindowBounds::Maximized(restore_bounds)
+            } else {
+                WindowBounds::Windowed(restore_bounds)
+            }),
+            titlebar: Some(TitlebarOptions {
+                title: Some("Drawio".into()),
+                ..Default::default()
+            }),
+            ..Default::default()
+        },
+        cx,
+        move |window, cx| {
+            let desktop = Desktop::new(window, diagram).unwrap_or_else(|error| {
+                rfd::MessageDialog::new()
+                    .set_title("Cannot start local editor")
+                    .set_description(error.to_string())
+                    .show();
+                std::process::exit(1);
+            });
+            window.on_window_should_close(cx, |window, _| {
+                rfd::MessageDialog::new()
+                    .set_parent(window)
+                    .set_title("Close Drawio?")
+                    .set_description("Save any changes using the File menu before closing.")
+                    .set_buttons(rfd::MessageButtons::OkCancel)
+                    .show()
+                    == rfd::MessageDialogResult::Ok
+            });
+            cx.new(|_| desktop)
+        },
+    )
+    .expect("Cannot open GPUI window");
+    cx.activate(true);
 }
 
 #[cfg(test)]
@@ -360,12 +406,21 @@ mod tests {
         let url = super::editor_url(Some(&diagram));
         assert!(url.contains("%20"));
         assert!(url.contains("%231"));
-        assert!(url.ends_with("%2F__launch.drawio"));
+        assert!(url.ends_with("%2F%5F%5Flaunch%2Edrawio"));
         assert!(!url.contains(&dir.path().to_string_lossy().to_string()));
         assert!(super::launch_diagram(&dir.path().join("missing.drawio")).is_err());
         assert!(super::launch_diagram(&dir.path().join("other.txt")).is_err());
         std::fs::write(&path, "<html/>").unwrap();
         assert!(super::launch_diagram(&path).is_err());
+    }
+    #[test]
+    fn download_urls_stay_local() {
+        assert!(super::local_download(&format!("blob:{}123", super::ORIGIN)));
+        assert!(super::local_download("data:image/svg+xml,test"));
+        assert!(!super::local_download("https://example.com/file.drawio"));
+        assert!(!super::local_download(
+            "blob:https://drawio.localhost.evil/123"
+        ));
     }
     #[test]
     fn serves_local_editor_and_rejects_traversal() {
