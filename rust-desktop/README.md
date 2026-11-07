@@ -29,7 +29,7 @@ On Windows 10, apply the folder permissions listed in [Microsoft’s Fixed Versi
 
 To build a single executable with WebView2 included, point
 `DRAWIO_WEBVIEW2_CAB` to the original Microsoft x64 CAB filename before running
-`cargo build --locked --manifest-path rust-desktop/Cargo.toml`. The resulting
+`cargo build --release --locked --manifest-path rust-desktop/Cargo.toml`. The resulting
 `Drawio.exe` unpacks the runtime into the current user's local app data
 on first launch and grants the Windows 10 renderer read access automatically.
 Subsequent launches reuse that version. Allow about 1 GB of free space for the
@@ -41,7 +41,7 @@ Build the single executable with the bundled x64 WebView2 CAB as described
 above. Compile the Inno Setup script from the repository root:
 
 ```powershell
-$exe = (Resolve-Path rust-desktop/target/debug/Drawio.exe).Path
+$exe = (Resolve-Path rust-desktop/target/release/Drawio.exe).Path
 ISCC.exe "/DSourceExe=$exe" rust-desktop/installer.iss
 ```
 

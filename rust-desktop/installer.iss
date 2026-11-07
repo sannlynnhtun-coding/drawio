@@ -5,7 +5,8 @@
 [Setup]
 AppId={{70AA4A28-3374-48EB-9ADC-A14A52070225}
 AppName=Drawio
-AppVersion=0.1.1
+AppVersion=1.0
+VersionInfoVersion=1.0.0.0
 DefaultDirName={localappdata}\Programs\DrawioDesktop
 DefaultGroupName=Drawio
 PrivilegesRequired=lowest
