@@ -4,6 +4,46 @@ use gpui_kit::*;
 use std::{borrow::Cow, path::PathBuf};
 use wry::{NewWindowResponse, WebView, WebViewBuilder, WebViewBuilderExtWindows};
 
+mod diagram_file;
+
+struct LaunchDiagram {
+    name: String,
+    xml: String,
+}
+
+fn launch_diagram(path: &std::path::Path) -> Result<LaunchDiagram, Box<dyn std::error::Error>> {
+    if !path
+        .extension()
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("drawio"))
+    {
+        return Err("Choose a .drawio file".into());
+    }
+    Ok(LaunchDiagram {
+        name: path
+            .file_name()
+            .ok_or("Missing filename")?
+            .to_string_lossy()
+            .into_owned(),
+        xml: diagram_file::read_diagram(path)?,
+    })
+}
+
+fn editor_url(diagram: Option<&LaunchDiagram>) -> String {
+    let mut url = "drawio://localhost/index.html?offline=1&local=1&splash=0".to_owned();
+    if let Some(diagram) = diagram {
+        url.push_str("&title=");
+        url.push_str(
+            &percent_encoding::utf8_percent_encode(
+                &diagram.name,
+                percent_encoding::NON_ALPHANUMERIC,
+            )
+            .to_string(),
+        );
+        url.push_str("#Uhttps%3A%2F%2Fdrawio.localhost%2F__launch.drawio");
+    }
+    url
+}
+
 const ORIGIN: &str = "https://drawio.localhost/";
 const CSP: &str = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'";
 
@@ -54,7 +94,7 @@ fn bounds(window: &Window) -> wry::Rect {
 struct Desktop(WebView);
 
 impl Desktop {
-    fn new(window: &Window) -> Result<Self, wry::Error> {
+    fn new(window: &Window, diagram: Option<LaunchDiagram>) -> Result<Self, wry::Error> {
         use windows::Win32::UI::WindowsAndMessaging::{
             GWL_STYLE, GetWindowLongPtrW, ICON_BIG, ICON_SMALL, LoadIconW, SWP_FRAMECHANGED,
             SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SendMessageW, SetWindowLongPtrW, SetWindowPos,
@@ -100,6 +140,7 @@ impl Desktop {
                 );
             }
         }
+        let url = editor_url(diagram.as_ref());
         let web = WebViewBuilder::new()
             .with_https_scheme(true)
             .with_incognito(true)
@@ -109,7 +150,19 @@ impl Desktop {
                 serde_json::to_string(include_str!("../assets/theme.css")).unwrap()
             ))
             .with_additional_browser_args("--disable-background-networking --proxy-server=127.0.0.1:9 --proxy-bypass-list=drawio.localhost")
-            .with_custom_protocol("drawio".into(), |_, request| response(request.uri()))
+            .with_custom_protocol("drawio".into(), move |_, request| {
+                if request.uri().path() == "/__launch.drawio" {
+                    if let Some(diagram) = &diagram {
+                        return wry::http::Response::builder()
+                            .header("Content-Type", "application/xml; charset=utf-8")
+                            .header("Content-Security-Policy", CSP)
+                            .header("Cache-Control", "no-store")
+                            .body(Cow::Owned(diagram.xml.clone().into_bytes()))
+                            .unwrap();
+                    }
+                }
+                response(request.uri())
+            })
             .with_navigation_handler(|url| url.starts_with(ORIGIN))
             .with_new_window_req_handler(|_, _| NewWindowResponse::Deny)
             .with_download_started_handler(|url, destination| {
@@ -125,7 +178,7 @@ impl Desktop {
                 }
             })
             .with_bounds(bounds(window))
-            .with_url("drawio://localhost/index.html?offline=1&local=1&splash=0")
+            .with_url(url)
             .build_as_child(window)?;
         Ok(Self(web))
     }
@@ -200,6 +253,20 @@ fn unpack_webview2(folder: &str, cab: &[u8]) -> Result<PathBuf, Box<dyn std::err
 }
 
 fn main() {
+    let diagram = match std::env::args_os()
+        .nth(1)
+        .map(|path| launch_diagram(std::path::Path::new(&path)))
+        .transpose()
+    {
+        Ok(diagram) => diagram,
+        Err(error) => {
+            rfd::MessageDialog::new()
+                .set_title("Cannot open diagram")
+                .set_description(error.to_string())
+                .show();
+            std::process::exit(1);
+        }
+    };
     // Use the HWND renderer when hosting a native WebView2 child.
     unsafe { std::env::set_var("GPUI_DISABLE_DIRECT_COMPOSITION", "1") };
     let runtime = if let Some((folder, cab)) = BUNDLED_RUNTIME {
@@ -247,7 +314,7 @@ fn main() {
             },
             cx,
             move |window, cx| {
-                let desktop = Desktop::new(window).unwrap_or_else(|error| {
+                let desktop = Desktop::new(window, diagram).unwrap_or_else(|error| {
                     rfd::MessageDialog::new()
                         .set_title("Cannot start local editor")
                         .set_description(error.to_string())
@@ -280,6 +347,26 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::response;
+    #[test]
+    fn opens_launch_file_with_spaces_and_unicode_without_exposing_its_path() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("diagram မြန်မာ #1.DRAWIO");
+        std::fs::write(
+            &path,
+            "<mxfile><diagram><mxGraphModel><root/></mxGraphModel></diagram></mxfile>",
+        )
+        .unwrap();
+        let diagram = super::launch_diagram(&path).unwrap();
+        let url = super::editor_url(Some(&diagram));
+        assert!(url.contains("%20"));
+        assert!(url.contains("%231"));
+        assert!(url.ends_with("%2F__launch.drawio"));
+        assert!(!url.contains(&dir.path().to_string_lossy().to_string()));
+        assert!(super::launch_diagram(&dir.path().join("missing.drawio")).is_err());
+        assert!(super::launch_diagram(&dir.path().join("other.txt")).is_err());
+        std::fs::write(&path, "<html/>").unwrap();
+        assert!(super::launch_diagram(&path).is_err());
+    }
     #[test]
     fn serves_local_editor_and_rejects_traversal() {
         let editor = response(&"/index.html?offline=1&local=1&splash=0".parse().unwrap());

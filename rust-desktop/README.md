@@ -47,3 +47,9 @@ ISCC.exe "/DSourceExe=$exe" rust-desktop/installer.iss
 
 Use the bundled build as the installer input so the installed app can start
 offline. The installer is per user and adds a Start menu shortcut.
+
+## Windows Open with
+
+The installer registers Drawio as an available application for `.drawio` files without changing your default app. Right-click a diagram and choose **Open with > Drawio**, or browse to the installed `Drawio.exe`. Each launch opens its file in a new window. Filenames containing spaces and Unicode are supported.
+
+The application loads a snapshot of the selected file. Use **File > Save As** to choose where to save edits; opening a file does not grant the embedded browser permission to overwrite the original.

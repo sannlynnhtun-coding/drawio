@@ -1,7 +1,7 @@
 1 ICON "assets/Drawio.ico"
 1 VERSIONINFO
-FILEVERSION 1,0,0,0
-PRODUCTVERSION 1,0,0,0
+FILEVERSION 1,0,1,0
+PRODUCTVERSION 1,0,1,0
 FILEFLAGSMASK 0x3fL
 FILEFLAGS 0x0L
 FILEOS 0x40004L
@@ -13,8 +13,8 @@ BEGIN
   BEGIN
    VALUE "FileDescription", "Drawio\0"
    VALUE "ProductName", "Drawio\0"
-   VALUE "FileVersion", "1.0.0\0"
-   VALUE "ProductVersion", "1.0.0\0"
+   VALUE "FileVersion", "1.0.1\0"
+   VALUE "ProductVersion", "1.0.1\0"
    VALUE "OriginalFilename", "Drawio.exe\0"
   END
  END
