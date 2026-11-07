@@ -47,11 +47,14 @@ jobs:
             libxcb1-dev libxcb-shape0-dev libxcb-xfixes0-dev libxcb-randr0-dev \
             libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev libvulkan-dev \
             libfontconfig1-dev libasound2-dev libssl-dev libzstd-dev \
-            desktop-file-utils dpkg-dev
+            desktop-file-utils dpkg-dev xvfb xdotool wmctrl openbox mesa-vulkan-drivers
       - name: Build and test
         run: |
           cargo build --release --locked --manifest-path rust-desktop/Cargo.toml
           cargo test --release --locked --manifest-path rust-desktop/Cargo.toml
+      - name: Linux close and cancel smoke test
+        if: runner.os == 'Linux'
+        run: timeout 90s xvfb-run -a bash rust-desktop/test-linux-close.sh rust-desktop/target/release/Drawio
       - name: Package and validate
         run: python3 rust-desktop/package_unix.py --binary rust-desktop/target/release/Drawio --arch '${{ matrix.arch }}'
       - uses: actions/upload-artifact@v4

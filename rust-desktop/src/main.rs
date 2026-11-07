@@ -9,6 +9,7 @@ use wry::WebViewBuilderExtWindows;
 use wry::{NewWindowResponse, WebView, WebViewBuilder};
 
 mod diagram_file;
+mod dialogs;
 
 struct LaunchDiagram {
     name: String,
@@ -179,7 +180,7 @@ impl Desktop {
                     return false;
                 }
                 let name = destination.file_name().unwrap_or_default().to_string_lossy();
-                if let Some(path) = rfd::FileDialog::new().set_file_name(name.as_ref()).save_file() {
+                if let Some(path) = dialogs::save_file(name.as_ref()) {
                     *destination = path;
                     true
                 } else {
@@ -293,10 +294,7 @@ fn main() {
     {
         Ok(diagram) => diagram,
         Err(error) => {
-            rfd::MessageDialog::new()
-                .set_title("Cannot open diagram")
-                .set_description(error.to_string())
-                .show();
+            dialogs::error("Cannot open diagram", &error.to_string());
             std::process::exit(1);
         }
     };
@@ -308,10 +306,7 @@ fn main() {
             match unpack_webview2(folder, cab) {
                 Ok(runtime) => Some(runtime),
                 Err(error) => {
-                    rfd::MessageDialog::new()
-                        .set_title("Cannot prepare bundled WebView2")
-                        .set_description(error.to_string())
-                        .show();
+                    dialogs::error("Cannot prepare bundled WebView2", &error.to_string());
                     std::process::exit(1);
                 }
             }
@@ -370,21 +365,10 @@ fn open_diagram_window(diagram: Option<LaunchDiagram>, cx: &mut App) {
         cx,
         move |window, cx| {
             let desktop = Desktop::new(window, diagram).unwrap_or_else(|error| {
-                rfd::MessageDialog::new()
-                    .set_title("Cannot start local editor")
-                    .set_description(error.to_string())
-                    .show();
+                dialogs::error("Cannot start local editor", &error.to_string());
                 std::process::exit(1);
             });
-            window.on_window_should_close(cx, |window, _| {
-                rfd::MessageDialog::new()
-                    .set_parent(window)
-                    .set_title("Close Drawio?")
-                    .set_description("Save any changes using the File menu before closing.")
-                    .set_buttons(rfd::MessageButtons::OkCancel)
-                    .show()
-                    == rfd::MessageDialogResult::Ok
-            });
+            window.on_window_should_close(cx, |window, _| dialogs::confirm_close(window));
             cx.new(|_| desktop)
         },
     )
